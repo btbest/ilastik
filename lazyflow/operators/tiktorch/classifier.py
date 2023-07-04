@@ -391,7 +391,11 @@ class TiktorchConnectionFactory(_base.IConnectionFactory):
         logger.debug("Trying to connect to tiktorch server using %s(%s):%s", host, addr, port),
         self._chan = grpc.insecure_channel(
             f"{addr}:{port}",
-            options=[("grpc.max_send_message_length", _100_MB), ("grpc.max_receive_message_length", _100_MB)],
+            options=[
+                ("grpc.max_send_message_length", _100_MB),
+                ("grpc.max_receive_message_length", _100_MB),
+                ("grpc.enable_http_proxy", 0),
+            ],
         )
         client = inference_pb2_grpc.InferenceStub(self._chan)
         upload_client = data_store_pb2_grpc.DataStoreStub(self._chan)
