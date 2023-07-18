@@ -37,22 +37,17 @@ logger = logging.getLogger(__name__)
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget
 
-# lazyflow
-from lazyflow.request import Request
-
 # volumina
 from volumina.utility import preferences
 
 # ilastik
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.experimental.napari_layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from .opDataSelection import (
     DatasetInfo,
-    RelativeFilesystemDatasetInfo,
-    FilesystemDatasetInfo,
     ProjectInternalDatasetInfo,
     UrlDatasetInfo,
 )
