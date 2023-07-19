@@ -55,6 +55,7 @@ from volumina.api import (
     generateRandomColors,
 )
 from volumina.volumeEditor import VolumeEditor
+from volumina.volumeEditorWidget import VolumeEditorWidget
 from volumina.utility import ShortcutManager
 from volumina.interpreter import ClickReportingInterpreter
 
@@ -64,7 +65,9 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.config import cfg as ilastik_config
 from ilastik.widgets.viewerControls import ViewerControls
 
-# ===----------------------------------------------------------------------------------------------------------------===
+from napari.components import ViewerModel as NapariViewerModel
+from napari.qt import QtViewer as NapariQtViewer
+from napari.qt import get_app as napari_detect_running_QApplication
 
 
 class LayerViewerGuiMetaclass(type(QWidget)):
@@ -95,10 +98,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     """
 
     layersUpdated = pyqtSignal()
-
-    ###########################################
-    ### AppletGuiInterface Concrete Methods ###
-    ###########################################
 
     def centralWidget(self):
         return self
@@ -149,6 +148,8 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         """
         super(LayerViewerGui, self).__init__()
 
+        napari_detect_running_QApplication()
+
         self._stopped = False
         self._initialized = False
         self.__cleanup_fns = []
@@ -198,16 +199,17 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         self._initCentralUic()
 
+        self.volumeEditorWidget = VolumeEditorWidget(self)
+
         self._initEditor(crosshair=crosshair, is_3d_widget_visible=is_3d_widget_visible)
         self.__viewerControlWidget = None
         if not centralWidgetOnly:
             self.initViewerControlUi()  # Might be overridden in a subclass. Default implementation loads a standard layer widget.
-            # self._drawer = QWidget( self )
             self.initAppletDrawerUi()  # Default implementation loads a blank drawer from drawer.ui.
 
         self._up_to_date = False
 
-        # By default, we start out disabled until we have at least one layer.
+        # Start out disabled until we have at least one layer.
         self.centralWidget().setEnabled(False)
 
     def _after_init(self):
@@ -676,6 +678,15 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         if prefer_2d:
             # Default to Z (axis 2 in the editor)
             self.volumeEditorWidget.quadview.ensureMaximized(2)
+
+        if crosshair:
+            raise NotImplementedError(
+                "Crosshair is not implemented yet. The applet should fall back to the old viewer."
+            )
+        display_dimensions = 3 if is_3d_widget_visible else 2
+        self.viewer_model = NapariViewerModel(ndisplay=display_dimensions)
+        self.viewer_widget = NapariQtViewer(self.viewer_model)
+        self.verticalLayout.addWidget(self.viewer_widget)
 
     def _convertPositionToDataSpace(self, voluminaPosition):
         taggedPosition = {k: p for k, p in zip("txyzc", voluminaPosition)}
