@@ -68,6 +68,7 @@ from ilastik.widgets.viewerControls import ViewerControls
 from napari.components import ViewerModel as NapariViewerModel
 from napari.qt import QtViewer as NapariQtViewer
 from napari.qt import get_app as napari_detect_running_QApplication
+from napari.layers.image import Image as NapariImage
 
 
 class LayerViewerGuiMetaclass(type(QWidget)):
@@ -195,6 +196,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 self._handleLayerInsertion(slot, i)
 
         self.layerstack = LayerStackModel()
+        self.napari_layers = []
         self.saved_layer_visibilities = None
 
         self._initCentralUic()
@@ -519,7 +521,20 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         if len(self.layerstack) > 0:
             self.centralWidget().setEnabled(True)
 
+        self.update_napari_layers()
+
         self.layersUpdated.emit()
+
+    def update_napari_layers(self):
+        for napari_layer in self.viewer_model.layers:
+            self.viewer_model.layers.remove(napari_layer)
+        for layer in self.layerstack:
+            image_data = layer.datasources[0].dataSlot.value[:]
+            napari_layer = NapariImage(
+                image_data,
+                name=layer.name,
+            )
+            self.viewer_model.add_layer(napari_layer)
 
     def determineDatashape(self):
         newDataShape = None
