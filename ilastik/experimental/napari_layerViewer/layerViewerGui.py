@@ -68,7 +68,6 @@ from ilastik.widgets.viewerControls import ViewerControls
 from napari.components import ViewerModel as NapariViewerModel
 from napari.qt import QtViewer as NapariQtViewer
 from napari.qt import get_app as napari_detect_running_QApplication
-from napari.layers.image import Image as NapariImage
 
 
 class LayerViewerGuiMetaclass(type(QWidget)):
@@ -240,6 +239,24 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
                 if slot.ready() and has_space:
                     layer = self.createStandardLayerFromSlot(slot)
+
+                    # Name the layer after the slot name.
+                    if isinstance(multiLayerSlot.operator, OpWrapSlot):
+                        # We attached an 'upleveling' operator, so look upstream for the real slot.
+                        layer.name = multiLayerSlot.operator.Input.upstream_slot.name
+                    else:
+                        layer.name = multiLayerSlot.name + " " + str(j)
+                    layers.append(layer)
+        return layers
+
+    def create_viewer_layers(self):
+        layers = []
+        for multiLayerSlot in self.observedSlots:
+            for j, slot in enumerate(multiLayerSlot):
+                has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
+                if slot.ready() and has_space:
+                    image_data = slot.value[:]
+                    layer = self.viewer_model.add_image(image_data, channel_axis=3)[0]
 
                     # Name the layer after the slot name.
                     if isinstance(multiLayerSlot.operator, OpWrapSlot):
@@ -435,6 +452,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()
+        self.napari_layers = self.create_viewer_layers()
 
         # The order of the initial layerstack has to be static, where the "Raw Input" layer is at the stacks last position
         for i in range(len(newGuiLayers)):
@@ -518,20 +536,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         if len(self.layerstack) > 0:
             self.centralWidget().setEnabled(True)
 
-        self.update_napari_layers()
-
         self.layersUpdated.emit()
-
-    def update_napari_layers(self):
-        for napari_layer in self.viewer_model.layers:
-            self.viewer_model.layers.remove(napari_layer)
-        for layer in self.layerstack:
-            image_data = layer.datasources[0].dataSlot.value[:]
-            napari_layer = NapariImage(
-                image_data,
-                name=layer.name,
-            )
-            self.viewer_model.add_layer(napari_layer)
 
     def determineDatashape(self):
         newDataShape = None
@@ -691,12 +696,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             # Default to Z (axis 2 in the editor)
             self.volumeEditorWidget.quadview.ensureMaximized(2)
 
-        if crosshair:
-            raise NotImplementedError(
-                "Crosshair is not implemented yet. The applet should fall back to the old viewer."
-            )
-        display_dimensions = 3 if is_3d_widget_visible else 2
-        self.viewer_model = NapariViewerModel(ndisplay=display_dimensions)
+        self.viewer_model = NapariViewerModel(ndisplay=2)
         self.viewer_widget = NapariQtViewer(self.viewer_model)
         self.verticalLayout.addWidget(self.viewer_widget)
 
