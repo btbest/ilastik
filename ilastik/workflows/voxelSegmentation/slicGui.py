@@ -18,12 +18,8 @@ SLIC_PARAMS = ("NumSegments", "Compactness", "MaxIter")  # , "SlicZero")
 
 
 class SlicGui(LayerViewerGui):
-    def __init__(
-        self, parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True
-    ):
-        super().__init__(
-            parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True
-        )
+    def __init__(self, parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], crosshair=True):
+        super().__init__(parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], crosshair=True)
 
         self._drawer = SlicViewerControls()
 

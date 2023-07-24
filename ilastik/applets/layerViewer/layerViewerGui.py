@@ -134,7 +134,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         parentApplet,
         topLevelOperatorView,
         additionalMonitoredSlots=[],
-        centralWidgetOnly=False,
         crosshair=True,
         is_3d_widget_visible=False,
     ):
@@ -145,7 +144,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         :param topLevelOperatorView: The top-level operator for the applet this GUI belongs to.
         :param additionalMonitoredSlots: Optional.  Can be used to add additional slots to the set of viewable layers (all slots from the top-level operator are already monitored).
-        :param centralWidgetOnly: If True, provide only a central widget without drawer or viewer controls.
         """
         super(LayerViewerGui, self).__init__()
 
@@ -200,10 +198,8 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         self._initEditor(crosshair=crosshair, is_3d_widget_visible=is_3d_widget_visible)
         self.__viewerControlWidget = None
-        if not centralWidgetOnly:
-            self.initViewerControlUi()  # Might be overridden in a subclass. Default implementation loads a standard layer widget.
-            # self._drawer = QWidget( self )
-            self.initAppletDrawerUi()  # Default implementation loads a blank drawer from drawer.ui.
+        self.initViewerControlUi()  # Might be overridden in a subclass. Default implementation loads a standard layer widget.
+        self.initAppletDrawerUi()  # Default implementation loads a blank drawer from drawer.ui.
 
         self._up_to_date = False
 
