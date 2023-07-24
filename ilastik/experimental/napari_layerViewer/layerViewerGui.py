@@ -146,7 +146,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         """
         super(LayerViewerGui, self).__init__()
 
-        napari_detect_running_QApplication()
+        napari_detect_running_QApplication()  # Move to app.py when napari is no longer experimental
 
         self._stopped = False
         self._initialized = False
