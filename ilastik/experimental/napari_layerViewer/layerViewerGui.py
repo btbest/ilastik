@@ -261,7 +261,8 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
                 if slot.ready() and has_space:
                     image_data = slot.value[:]
-                    layer = self.viewer_model.add_image(image_data, channel_axis=3)[0]
+                    channel_axis = slot.meta.axistags.channelIndex
+                    layer = self.viewer_model.add_image(image_data, channel_axis=channel_axis)[0]
 
                     # Name the layer after the slot name.
                     if isinstance(multiLayerSlot.operator, OpWrapSlot):
