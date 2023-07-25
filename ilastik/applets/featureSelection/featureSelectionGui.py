@@ -207,9 +207,7 @@ class FeatureSelectionGui(LayerViewerGui):
         layers = []
 
         if inputSlot.ready():
-            image_data = inputSlot.value[:]
-            layer = self.viewer_model.add_image(image_data, opacity=1.0, channel_axis=3)[0]
-            layer.name = "Raw Data (display only)"
+            layer = self.createNapariLayerFromSlot(inputSlot, name="Raw Data (display only)")
             layers.append(layer)
 
         # featureMultiSlot = opFeatureSelection.FeatureLayers

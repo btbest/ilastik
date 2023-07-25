@@ -260,9 +260,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             for j, slot in enumerate(multiLayerSlot):
                 has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
                 if slot.ready() and has_space:
-                    image_data = slot.value[:]
-                    channel_axis = slot.meta.axistags.channelIndex
-                    layer = self.viewer_model.add_image(image_data, channel_axis=channel_axis)[0]
+                    layer = self.createNapariLayerFromSlot(slot)
 
                     # Name the layer after the slot name.
                     if isinstance(multiLayerSlot.operator, OpWrapSlot):
@@ -295,6 +293,13 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     def generateAlphaModulatedLayersFromChannels(self, slot):
         # TODO
         assert False
+
+    def createNapariLayerFromSlot(self, slot, name=None, opacity=1.0):
+        image_data = slot.value[:]
+        c_index = slot.meta.axistags.index("c")
+        layer = self.viewer_model.add_image(image_data, opacity=opacity, channel_axis=c_index)[0]
+        layer.name = name or slot.name
+        return layer
 
     @classmethod
     def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False, name=None, opacity=1.0, visible=True):
