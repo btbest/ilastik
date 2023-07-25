@@ -42,7 +42,7 @@ from volumina.widgets.layercontextmenu import layercontextmenu
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.experimental.napari_layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -191,6 +191,34 @@ class FeatureSelectionGui(LayerViewerGui):
                 layers += self.getFeatureLayers(inputSlot, featureSlot)
 
             layers[0].visible = True
+        return layers
+
+    def create_viewer_layers(self):
+        if hasattr(self.drawer, "feature2dBox"):  # drawer has to be initialized (initAppletDrawerUi)
+            # set hidden status of feature2dBox again (presence of z axis may have changed)
+            if "z" in self.topLevelOperatorView.InputImage.meta.original_axistags:
+                self.drawer.feature2dBox.setHidden(False)
+            else:
+                self.drawer.feature2dBox.setHidden(True)
+
+        opFeatureSelection = self.topLevelOperatorView
+        inputSlot = opFeatureSelection.InputImage
+
+        layers = []
+
+        if inputSlot.ready():
+            image_data = inputSlot.value[:]
+            layer = self.viewer_model.add_image(image_data, opacity=1.0, channel_axis=3)[0]
+            layer.name = "Raw Data (display only)"
+            layers.append(layer)
+
+        # featureMultiSlot = opFeatureSelection.FeatureLayers
+        # if inputSlot.ready() and featureMultiSlot.ready():
+        #     for featureIndex, featureSlot in enumerate(featureMultiSlot):
+        #         assert featureSlot.ready()
+        #         layers += self.getFeatureLayers(inputSlot, featureSlot)
+        #
+        #     layers[0].visible = True
         return layers
 
     def getFeatureLayers(self, inputSlot, featureSlot):

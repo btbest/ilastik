@@ -137,12 +137,17 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         is_3d_widget_visible=False,
     ):
         """
-        Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
-        Changes include slot resize events, and slot ready/unready status changes.
-        When a change is detected, the `setupLayers()` function is called, and the result is used to update the list of layers shown in the central widget.
+        This GUI provides an image viewer, drawer widget, and layer controls.
+        The GUI class must be in a directory with a `centralWidget.ui` file,
+        which must provide a `layout` named `viewerLayout`. The viewer will added to this layout.
 
         :param topLevelOperatorView: The top-level operator for the applet this GUI belongs to.
-        :param additionalMonitoredSlots: Optional.  Can be used to add additional slots to the set of viewable layers (all slots from the top-level operator are already monitored).
+            **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
+            Changes include slot resize events, and slot ready/unready status changes.
+            When a change is detected, the `setupLayers()` function is called,
+            and the result is used to update the list of layers shown in the central widget.
+        :param additionalMonitoredSlots: Optional. Additional slots to monitor besides those of the
+            top-level operator.
         """
         super(LayerViewerGui, self).__init__()
 
@@ -653,7 +658,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
         """
-        # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         uic.loadUi(localDir + "/centralWidget.ui", self)
 
@@ -698,7 +702,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         self.viewer_model = NapariViewerModel(ndisplay=2)
         self.viewer_widget = NapariQtViewer(self.viewer_model)
-        self.verticalLayout.addWidget(self.viewer_widget)
+        self.viewerLayout.addWidget(self.viewer_widget)
 
     def _convertPositionToDataSpace(self, voluminaPosition):
         taggedPosition = {k: p for k, p in zip("txyzc", voluminaPosition)}
