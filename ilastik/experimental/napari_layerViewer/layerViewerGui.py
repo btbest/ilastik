@@ -294,10 +294,10 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         # TODO
         assert False
 
-    def createNapariLayerFromSlot(self, slot, name=None, opacity=1.0):
+    def createNapariLayerFromSlot(self, slot, name=None, opacity=1.0, visible=True):
         image_data = slot.value[:]
         c_index = slot.meta.axistags.index("c")
-        layer = self.viewer_model.add_image(image_data, opacity=opacity, channel_axis=c_index)[0]
+        layer = self.viewer_model.add_image(image_data, opacity=opacity, channel_axis=c_index, visible=visible)[0]
         layer.name = name or slot.name
         return layer
 

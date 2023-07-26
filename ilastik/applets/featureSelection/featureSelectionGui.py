@@ -194,8 +194,8 @@ class FeatureSelectionGui(LayerViewerGui):
         return layers
 
     def create_viewer_layers(self):
-        if hasattr(self.drawer, "feature2dBox"):  # drawer has to be initialized (initAppletDrawerUi)
-            # set hidden status of feature2dBox again (presence of z axis may have changed)
+        if hasattr(self.drawer, "feature2dBox"):
+            # Z may have been added or removed
             if "z" in self.topLevelOperatorView.InputImage.meta.original_axistags:
                 self.drawer.feature2dBox.setHidden(False)
             else:
@@ -207,16 +207,16 @@ class FeatureSelectionGui(LayerViewerGui):
         layers = []
 
         if inputSlot.ready():
-            layer = self.createNapariLayerFromSlot(inputSlot, name="Raw Data (display only)")
-            layers.append(layer)
+            rawDataLayer = self.createNapariLayerFromSlot(inputSlot, name="Raw Data (display only)")
+            layers.append(rawDataLayer)
 
-        # featureMultiSlot = opFeatureSelection.FeatureLayers
-        # if inputSlot.ready() and featureMultiSlot.ready():
-        #     for featureIndex, featureSlot in enumerate(featureMultiSlot):
-        #         assert featureSlot.ready()
-        #         layers += self.getFeatureLayers(inputSlot, featureSlot)
-        #
-        #     layers[0].visible = True
+        featureMultiSlot = opFeatureSelection.FeatureLayers
+        if inputSlot.ready() and featureMultiSlot.ready():
+            for featureIndex, featureSlot in enumerate(featureMultiSlot):
+                assert featureSlot.ready()
+                layers += self.getNapariFeatureLayers(inputSlot, featureSlot)
+
+        layers[0].visible = True
         return layers
 
     def getFeatureLayers(self, inputSlot, featureSlot):
@@ -261,6 +261,49 @@ class FeatureSelectionGui(LayerViewerGui):
             featureLayer.visible = False
             featureLayer.opacity = 1.0
             featureLayer.name = featureName
+
+            layers.append(featureLayer)
+
+        return layers
+
+    def getNapariFeatureLayers(self, inputSlot, featureSlot):
+        layers = []
+
+        channelAxis = inputSlot.meta.axistags.channelIndex
+        assert channelAxis == featureSlot.meta.axistags.channelIndex
+        numInputChannels = inputSlot.meta.shape[channelAxis]
+        numFeatureChannels = featureSlot.meta.shape[channelAxis]
+
+        # Determine how many channels this feature has (up to 3)
+        featureChannelsPerInputChannel = numFeatureChannels // numInputChannels
+        if not 0 < featureChannelsPerInputChannel <= 3:
+            logger.warning(
+                "The feature selection Gui does not yet support features with more than three channels per "
+                "input channel. Some features will not be displayed entirely."
+            )
+
+        for inputChannel in range(numInputChannels):
+            # Determine the name for this feature
+            featureName = featureSlot.meta.description
+            assert featureName is not None
+            if 2 <= numInputChannels <= 3:
+                channelNames = ["R", "G", "B"]
+                featureName += " (" + channelNames[inputChannel] + ")"
+            if numInputChannels > 3:
+                featureName += " (Ch. {})".format(inputChannel)
+
+            opSubRegion = OpSubRegion(parent=self.topLevelOperatorView.parent)
+            opSubRegion.Input.connect(featureSlot)
+            start = [0] * len(featureSlot.meta.shape)
+            start[channelAxis] = inputChannel * featureChannelsPerInputChannel
+            stop = list(featureSlot.meta.shape)
+            stop[channelAxis] = (inputChannel + 1) * featureChannelsPerInputChannel
+
+            opSubRegion.Roi.setValue((tuple(start), tuple(stop)))
+
+            featureLayer = self.createNapariLayerFromSlot(
+                opSubRegion.Output, name=featureName, opacity=1.0, visible=False
+            )
 
             layers.append(featureLayer)
 
