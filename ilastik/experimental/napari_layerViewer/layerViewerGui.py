@@ -25,6 +25,8 @@ from functools import partial
 import logging
 from future.utils import with_metaclass
 
+from ilastik.experimental.napari_layerViewer.napariglue import NapariImageAdapter
+
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
@@ -295,10 +297,10 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         assert False
 
     def createNapariLayerFromSlot(self, slot, name=None, opacity=1.0, visible=True):
-        image_data = slot.value[:]
-        c_index = slot.meta.axistags.index("c")
-        layer = self.viewer_model.add_image(image_data, opacity=opacity, channel_axis=c_index, visible=visible)[0]
-        layer.name = name or slot.name
+        # c_index = slot.meta.axistags.index("c")
+        # layer = self.viewer_model.add_image([NapariAdaptedSlot(slot)], opacity=opacity, channel_axis=c_index, visible=visible)[0]
+        # layer.name = name or slot.name
+        layer = NapariImageAdapter(self.viewer_model, slot, name, opacity, visible)
         return layer
 
     @classmethod
