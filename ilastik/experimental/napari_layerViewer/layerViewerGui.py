@@ -26,6 +26,7 @@ import logging
 from future.utils import with_metaclass
 
 from ilastik.experimental.napari_layerViewer.napariglue import NapariImageAdapter
+from lazyflow.slot import Slot
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -262,7 +263,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             for j, slot in enumerate(multiLayerSlot):
                 has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
                 if slot.ready() and has_space:
-                    layer = self.createNapariLayerFromSlot(slot)
+                    layer = self.create_napari_layer_from_slot(slot)
 
                     # Name the layer after the slot name.
                     if isinstance(multiLayerSlot.operator, OpWrapSlot):
@@ -296,7 +297,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         # TODO
         assert False
 
-    def createNapariLayerFromSlot(self, slot, name=None, opacity=1.0, visible=True):
+    def create_napari_layer_from_slot(self, slot: Slot, name=None, opacity=1.0, visible=True) -> NapariImageAdapter:
         # c_index = slot.meta.axistags.index("c")
         # layer = self.viewer_model.add_image([NapariAdaptedSlot(slot)], opacity=opacity, channel_axis=c_index, visible=visible)[0]
         # layer.name = name or slot.name

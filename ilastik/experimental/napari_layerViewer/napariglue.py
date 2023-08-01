@@ -20,7 +20,7 @@ class NapariImageAdapter(Image):
         self.name = name or slot.name
         self.opacity = opacity
         self.visible = visible
-        self.napari_image = None
+        self.napari_image: Image = None
 
     @property
     def visible(self) -> bool:
@@ -30,11 +30,11 @@ class NapariImageAdapter(Image):
     def visible(self, value: bool):
         self._visible = value
         if value:
-            self._create_napari_image()
+            self._create_napari_image_and_add_to_viewer()
         else:
             self.napari_image = None
 
-    def _create_napari_image(self):
+    def _create_napari_image_and_add_to_viewer(self):
         c_index = self.slot.meta.axistags.index("c")
         image_data = self.slot.value
         self.napari_image = self.viewer.add_image(image_data, opacity=self.opacity, channel_axis=c_index)[0]

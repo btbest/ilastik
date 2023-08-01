@@ -32,6 +32,7 @@ from PyQt5.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessa
 
 # lazyflow
 import lazyflow.operators.filterOperators as filterOps
+from ilastik.experimental.napari_layerViewer.napariglue import NapariImageAdapter
 from lazyflow.operators.generic import OpSubRegion
 
 # volumina
@@ -48,7 +49,7 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-
+from lazyflow.slot import Slot
 
 logger = logging.getLogger(__name__)
 
@@ -207,14 +208,14 @@ class FeatureSelectionGui(LayerViewerGui):
         layers = []
 
         if inputSlot.ready():
-            rawDataLayer = self.createNapariLayerFromSlot(inputSlot, name="Raw Data (display only)")
+            rawDataLayer = self.create_napari_layer_from_slot(inputSlot, name="Raw Data (display only)")
             layers.append(rawDataLayer)
 
         featureMultiSlot = opFeatureSelection.FeatureLayers
         if inputSlot.ready() and featureMultiSlot.ready():
             for featureIndex, featureSlot in enumerate(featureMultiSlot):
                 assert featureSlot.ready()
-                layers += self.getNapariFeatureLayers(inputSlot, featureSlot)
+                layers += self.get_feature_layers(inputSlot, featureSlot)
 
         layers[0].visible = True
         return layers
@@ -266,46 +267,44 @@ class FeatureSelectionGui(LayerViewerGui):
 
         return layers
 
-    def getNapariFeatureLayers(self, inputSlot, featureSlot):
+    def get_feature_layers(self, inputSlot: Slot, featureSlot: Slot) -> list[NapariImageAdapter]:
         layers = []
 
-        channelAxis = inputSlot.meta.axistags.channelIndex
-        assert channelAxis == featureSlot.meta.axistags.channelIndex
-        numInputChannels = inputSlot.meta.shape[channelAxis]
-        numFeatureChannels = featureSlot.meta.shape[channelAxis]
+        channel_index: int = inputSlot.meta.axistags.channelIndex
+        assert channel_index == featureSlot.meta.axistags.channelIndex
+        input_channels: int = inputSlot.meta.shape[channel_index]
+        feature_channels: int = featureSlot.meta.shape[channel_index]
 
-        # Determine how many channels this feature has (up to 3)
-        featureChannelsPerInputChannel = numFeatureChannels // numInputChannels
-        if not 0 < featureChannelsPerInputChannel <= 3:
+        features_per_input = feature_channels // input_channels
+        if not 0 < features_per_input <= 3:
             logger.warning(
                 "The feature selection Gui does not yet support features with more than three channels per "
                 "input channel. Some features will not be displayed entirely."
             )
 
-        for inputChannel in range(numInputChannels):
-            # Determine the name for this feature
-            featureName = featureSlot.meta.description
-            assert featureName is not None
-            if 2 <= numInputChannels <= 3:
-                channelNames = ["R", "G", "B"]
-                featureName += " (" + channelNames[inputChannel] + ")"
-            if numInputChannels > 3:
-                featureName += " (Ch. {})".format(inputChannel)
+        for input_channel in range(input_channels):
+            feature_name = featureSlot.meta.description
+            assert feature_name is not None
+            if 2 <= input_channels <= 3:
+                rgb = ["R", "G", "B"]
+                feature_name += " (" + rgb[input_channel] + ")"
+            if input_channels > 3:
+                feature_name += " (Ch. {})".format(input_channel)
 
             opSubRegion = OpSubRegion(parent=self.topLevelOperatorView.parent)
             opSubRegion.Input.connect(featureSlot)
             start = [0] * len(featureSlot.meta.shape)
-            start[channelAxis] = inputChannel * featureChannelsPerInputChannel
+            start[channel_index] = input_channel * features_per_input
             stop = list(featureSlot.meta.shape)
-            stop[channelAxis] = (inputChannel + 1) * featureChannelsPerInputChannel
+            stop[channel_index] = (input_channel + 1) * features_per_input
 
             opSubRegion.Roi.setValue((tuple(start), tuple(stop)))
 
-            featureLayer = self.createNapariLayerFromSlot(
-                opSubRegion.Output, name=featureName, opacity=1.0, visible=False
+            feature_layer = self.create_napari_layer_from_slot(
+                opSubRegion.Output, name=feature_name, opacity=1.0, visible=False
             )
 
-            layers.append(featureLayer)
+            layers.append(feature_layer)
 
         return layers
 
