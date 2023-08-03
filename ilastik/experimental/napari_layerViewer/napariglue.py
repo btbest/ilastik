@@ -1,11 +1,14 @@
-import numpy as np
+from typing import Optional
+
 from napari.components import ViewerModel as NapariViewerModel
-from napari.layers import Image
+from napari.layers import Image as NapariImageLayer
+from volumina.pixelpipeline.datasources import createDataSource
+from volumina.layer import GrayscaleLayer as VoluminaGrayscaleLayer
 
 from lazyflow.slot import Slot
 
 
-class NapariImageAdapter(Image):
+class NapariImageAdapter(VoluminaGrayscaleLayer):
     """
     A virtual layer that provides ilastik with the API it expects from a viewer layer.
     In particular, ilastik assumes that viewer layers can lazy-load image data from slots it gives them.
@@ -14,13 +17,13 @@ class NapariImageAdapter(Image):
     """
 
     def __init__(self, viewer: NapariViewerModel, slot: Slot, name: str, opacity: float, visible: bool):
-        super().__init__(np.array([[0]]))
+        super().__init__(createDataSource(slot))
         self.viewer = viewer
         self.slot = slot
         self.name = name or slot.name
         self.opacity = opacity
         self.visible = visible
-        self.napari_image: Image = None
+        self.napari_image: Optional[NapariImageLayer] = None
 
     @property
     def visible(self) -> bool:

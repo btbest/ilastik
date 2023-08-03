@@ -201,7 +201,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 self._handleLayerInsertion(slot, i)
 
         self.layerstack = LayerStackModel()
-        self.napari_layers = []
         self.saved_layer_visibilities = None
 
         self._initCentralUic()
@@ -257,23 +256,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                     layers.append(layer)
         return layers
 
-    def create_viewer_layers(self):
-        layers = []
-        for multiLayerSlot in self.observedSlots:
-            for j, slot in enumerate(multiLayerSlot):
-                has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
-                if slot.ready() and has_space:
-                    layer = self.create_napari_layer_from_slot(slot)
-
-                    # Name the layer after the slot name.
-                    if isinstance(multiLayerSlot.operator, OpWrapSlot):
-                        # We attached an 'upleveling' operator, so look upstream for the real slot.
-                        layer.name = multiLayerSlot.operator.Input.upstream_slot.name
-                    else:
-                        layer.name = multiLayerSlot.name + " " + str(j)
-                    layers.append(layer)
-        return layers
-
     def _handleLayerInsertion(self, slot, slotIndex):
         """
         The multislot providing our layers has a new item.
@@ -297,15 +279,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         # TODO
         assert False
 
-    def create_napari_layer_from_slot(self, slot: Slot, name=None, opacity=1.0, visible=True) -> NapariImageAdapter:
-        # c_index = slot.meta.axistags.index("c")
-        # layer = self.viewer_model.add_image([NapariAdaptedSlot(slot)], opacity=opacity, channel_axis=c_index, visible=visible)[0]
-        # layer.name = name or slot.name
-        layer = NapariImageAdapter(self.viewer_model, slot, name, opacity, visible)
-        return layer
-
-    @classmethod
-    def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False, name=None, opacity=1.0, visible=True):
+    def createStandardLayerFromSlot(self, slot, lastChannelIsAlpha=False, name=None, opacity=1.0, visible=True):
         """
         Convenience function.
         Generates a volumina layer using the given slot.
@@ -314,55 +288,53 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         :param slot: The slot to generate a layer from
         :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.
         """
-        numChannels = 1
-        display_mode = "default"
-        c_index = slot.meta.axistags.index("c")
-        if c_index < len(slot.meta.axistags):
-            numChannels = slot.meta.shape[c_index]
-            display_mode = slot.meta.display_mode
+        # numChannels = 1
+        # display_mode = "default"
+        # c_index = slot.meta.axistags.index("c")
+        # if c_index < len(slot.meta.axistags):
+        #     numChannels = slot.meta.shape[c_index]
+        #     #display_mode = slot.meta.display_mode
+        #
+        # if display_mode == "" or display_mode == "default":
+        #     ## Figure out whether the default should be rgba or grayscale
+        #     if lastChannelIsAlpha:
+        #         assert numChannels <= 4, (
+        #             "This function doesn't support alpha for slots with more than 4 channels.  "
+        #             "Your image has {} channels.".format(numChannels)
+        #         )
+        #
+        #     # Automatically select Grayscale or RGBA based on number of channels
+        #     if numChannels == 2 or numChannels == 3:
+        #         display_mode = "rgba"
+        #     elif slot.meta.dtype == numpy.uint64:
+        #         display_mode = "random-colortable"
+        #     else:
+        #         display_mode = "grayscale"
+        #
+        # # Override RGBA --> Grayscale if there's only 1 channel.
+        # if display_mode == "rgba" and numChannels == 1:
+        #     display_mode = "grayscale"
+        #
+        # if display_mode == "grayscale":
+        #     assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
+        #     layer = cls._create_grayscale_layer_from_slot(slot, numChannels)
+        # elif display_mode == "rgba":
+        #     assert numChannels > 2 or (
+        #         numChannels == 2 and not lastChannelIsAlpha
+        #     ), "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format(
+        #         numChannels, lastChannelIsAlpha, slot.meta.axistags
+        #     )
+        #     layer = cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
+        # elif display_mode == "random-colortable":
+        #     layer = cls._create_random_colortable_layer_from_slot(slot)
+        # elif display_mode == "alpha-modulated":
+        #     layer = cls._create_alpha_modulated_layer_from_slot(slot)
+        # elif display_mode == "binary-mask":
+        #     layer = cls._create_binary_mask_layer_from_slot(slot)
+        # else:
+        #     raise RuntimeError("unknown channel display mode: " + display_mode)
 
-        if display_mode == "" or display_mode == "default":
-            ## Figure out whether the default should be rgba or grayscale
-            if lastChannelIsAlpha:
-                assert numChannels <= 4, (
-                    "This function doesn't support alpha for slots with more than 4 channels.  "
-                    "Your image has {} channels.".format(numChannels)
-                )
-
-            # Automatically select Grayscale or RGBA based on number of channels
-            if numChannels == 2 or numChannels == 3:
-                display_mode = "rgba"
-            elif slot.meta.dtype == numpy.uint64:
-                display_mode = "random-colortable"
-            else:
-                display_mode = "grayscale"
-
-        # Override RGBA --> Grayscale if there's only 1 channel.
-        if display_mode == "rgba" and numChannels == 1:
-            display_mode = "grayscale"
-
-        if display_mode == "grayscale":
-            assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
-            layer = cls._create_grayscale_layer_from_slot(slot, numChannels)
-        elif display_mode == "rgba":
-            assert numChannels > 2 or (
-                numChannels == 2 and not lastChannelIsAlpha
-            ), "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format(
-                numChannels, lastChannelIsAlpha, slot.meta.axistags
-            )
-            layer = cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
-        elif display_mode == "random-colortable":
-            layer = cls._create_random_colortable_layer_from_slot(slot)
-        elif display_mode == "alpha-modulated":
-            layer = cls._create_alpha_modulated_layer_from_slot(slot)
-        elif display_mode == "binary-mask":
-            layer = cls._create_binary_mask_layer_from_slot(slot)
-        else:
-            raise RuntimeError("unknown channel display mode: " + display_mode)
-
-        layer.name = name or slot.name
-        layer.visible = visible
-        layer.opacity = opacity
+        layer = NapariImageAdapter(self.viewer_model, slot, name, opacity, visible)
 
         return layer
 
@@ -466,7 +438,6 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()
-        self.napari_layers = self.create_viewer_layers()
 
         # The order of the initial layerstack has to be static, where the "Raw Input" layer is at the stacks last position
         for i in range(len(newGuiLayers)):
