@@ -18,12 +18,12 @@ class NapariImageAdapter(VoluminaGrayscaleLayer):
 
     def __init__(self, viewer: NapariViewerModel, slot: Slot, name: str, opacity: float, visible: bool):
         super().__init__(createDataSource(slot))
+        self.napari_image: Optional[NapariImageLayer] = None
         self.viewer = viewer
         self.slot = slot
         self.name = name or slot.name
         self.opacity = opacity
         self.visible = visible
-        self.napari_image: Optional[NapariImageLayer] = None
 
     @property
     def visible(self) -> bool:
@@ -34,11 +34,15 @@ class NapariImageAdapter(VoluminaGrayscaleLayer):
         self._visible = value
         if value:
             self._create_napari_image_and_add_to_viewer()
-        else:
-            self.napari_image = None
+        elif self.napari_image is not None:
+            self._destroy_napari_image()
 
     def _create_napari_image_and_add_to_viewer(self):
         c_index = self.slot.meta.axistags.index("c")
         image_data = self.slot.value
         self.napari_image = self.viewer.add_image(image_data, opacity=self.opacity, channel_axis=c_index)[0]
         self.napari_image.name = self.name
+
+    def _destroy_napari_image(self):
+        self.viewer.layers.remove(self.napari_image)
+        self.napari_image = None
