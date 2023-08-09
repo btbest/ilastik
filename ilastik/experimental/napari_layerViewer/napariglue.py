@@ -1,11 +1,33 @@
 from typing import Optional
 
+import dask.array as daskarray
 from napari.components import ViewerModel as NapariViewerModel
 from napari.layers import Image as NapariImageLayer
 from volumina.pixelpipeline.datasources import createDataSource
 from volumina.layer import GrayscaleLayer as VoluminaGrayscaleLayer
 
 from lazyflow.slot import Slot
+
+
+class DaskSlotAdapter:
+    """
+    Dask array that uses a lazyflow slot as its data source to provide lazy-loading.
+    Slots lazy-load by returning Requests when sliced, which the consumer needs to .wait() for to load.
+    Napari doesn't know to do that of course, but it does know how to lazy-load from dask arrays.
+    So we let Napari lazy-load through dask for us and turn off lazy-loading in the slot by awaiting the Request.
+    """
+
+    def __init__(self, slot: Slot):
+        self.slot = slot
+        self.shape = slot.meta.shape
+        self.ndim = len(self.shape)
+        self.dtype = slot.meta.dtype
+
+    def __getitem__(self, item):
+        return self.slot[item].wait()
+
+    def __getattr__(self, item):
+        return getattr(self.slot, item)
 
 
 class NapariImageAdapter(VoluminaGrayscaleLayer):
@@ -39,7 +61,7 @@ class NapariImageAdapter(VoluminaGrayscaleLayer):
 
     def _create_napari_image_and_add_to_viewer(self):
         c_index = self.slot.meta.axistags.index("c")
-        image_data = self.slot.value
+        image_data = daskarray.from_array(DaskSlotAdapter(self.slot), chunks=256)
         self.napari_image = self.viewer.add_image(image_data, opacity=self.opacity, channel_axis=c_index)[0]
         self.napari_image.name = self.name
 
