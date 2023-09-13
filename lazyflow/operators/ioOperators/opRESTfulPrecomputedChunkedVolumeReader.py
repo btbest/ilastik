@@ -59,6 +59,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         super().__init__(*args, **kwargs)
         self._axes = None
         self._volume_object = None
+        self.Scale.notifyDirty(lambda s, v: print(f"scale dirty with value={s.value} on slot={s}"))
 
     def setupOutputs(self):
         # Create a RESTfulPrecomputedChunkedVolume object to handle
@@ -67,7 +68,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
             # info twice (i.e. setting up the volume twice)
             if self._volume_object.volume_url == self.BaseUrl.value:
                 return
-
+        print(f"setupOutputs on {self}")
         self._volume_object = RESTfulPrecomputedChunkedVolume(self.BaseUrl.value)
 
         self._axes = self._volume_object.axes
@@ -140,6 +141,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         roi = (start, stop)
 
         scale = self.Scale.value
+        print(f"execute with scale={scale}, roi={roi}")
         assert len(roi) == 2
         assert all(len(x) == len(self._volume_object.get_shape(scale)) for x in roi)
         block_shape = self._volume_object.get_block_shape(scale)

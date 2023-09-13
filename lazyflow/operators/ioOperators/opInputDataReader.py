@@ -159,6 +159,7 @@ class OpInputDataReader(Operator):
         Inspect the file name and instantiate and connect an internal operator of the appropriate type.
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
+        print(f"setupOutputs on {self}")
         path_components = splitPath(self.FilePath.value)
 
         cwd = self.WorkingDirectory.value if self.WorkingDirectory.ready() else None

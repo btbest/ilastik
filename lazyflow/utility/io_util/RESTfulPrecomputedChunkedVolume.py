@@ -183,7 +183,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         """
         if scale is None:
             scale = self._use_scale
-
+        print(f"download block at scale {scale}: {block_coordinates}")
         url, blockshape = self.generate_url(block_coordinates, scale)
         try:
             content = self.downloading(url)
