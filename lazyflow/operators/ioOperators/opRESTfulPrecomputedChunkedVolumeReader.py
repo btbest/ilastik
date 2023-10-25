@@ -44,14 +44,12 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
     BaseUrl = InputSlot()
     Scale = InputSlot(optional=True)
 
-    MaxScale = OutputSlot(stype="int")
-    ChunkSize = OutputSlot(stype="tuple")
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._axes = None
         self._volume_object = None
+        self.chunk_size = ()
         self.Scale.notifyDirty(lambda s, v: print(f"scale dirty with value={s.value} on slot={s}"))
 
     def setupOutputs(self):
@@ -61,15 +59,14 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         # Create a RESTfulPrecomputedChunkedVolume object to handle
         print(f"setupOutputs on {self}")
         self._volume_object = RESTfulPrecomputedChunkedVolume(self.BaseUrl.value)
-        self._axes = self._volume_object.axes
 
-        scale = self.Scale.value if self.Scale.ready() else 0
-        self.MaxScale.setValue(len(self._volume_object.scales) - 1)
-        self.ChunkSize.setValue(self._volume_object.get_chunk_size(scale))
-        self.Output.meta.shape = tuple(self._volume_object.get_shape(scale))
+        current_scale = self.Scale.value if self.Scale.ready() else 0
+        self.chunk_size = self._volume_object.get_chunk_size(current_scale)
+        self.Output.meta.shape = tuple(self._volume_object.get_shape(current_scale))
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
-        self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
-        self.Output.meta.multiscale = True
+        self.Output.meta.axistags = vigra.defaultAxistags(self._volume_object.axes)
+        self.Output.meta.multiscale = len(self._volume_object.scales) > 1
+        self.Output.meta.scales = self._volume_object.scales
 
     @staticmethod
     def get_intersecting_blocks(blockshape, roi, shape):
@@ -153,9 +150,8 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
     fixAtCurrent = InputSlot(value=False, stype="bool")
 
     BaseUrl = InputSlot()
-    Scale = InputSlot()
+    Scale = InputSlot(optional=True)
 
-    MaxScale = OutputSlot(stype="int")
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -163,7 +159,6 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.RESTfulReader = OpRESTfulPrecomputedChunkedVolumeReaderNoCache(parent=self)
         self.RESTfulReader.BaseUrl.connect(self.BaseUrl)
         self.RESTfulReader.Scale.connect(self.Scale)
-        self.MaxScale.connect(self.RESTfulReader.MaxScale)
 
         self.cache = OpBlockedArrayCache(parent=self)
         self.cache.name = "input_image_cache"
@@ -172,7 +167,7 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.Output.connect(self.cache.Output)
 
     def setupOutputs(self):
-        self.cache.BlockShape.setValue(tuple(self.RESTfulReader.ChunkSize.value))
+        self.cache.BlockShape.setValue(tuple(self.RESTfulReader.chunk_size))
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
@@ -191,8 +186,7 @@ if __name__ == "__main__":
     g = graph.Graph()
     op = OpRESTfulPrecomputedChunkedVolumeReader(graph=g)
     op.BaseUrl.setValue(volume_url)
-    print(f"Maximum scale level: {op.MaxScale.value}")
-    print(f"Selected scale: {op.Scale.value}")
+    print(f"Number of scales: {len(op.Output.meta.scales)}")
 
     # get some data
     roi = ((0, 0, 0, 0), (1, 10, 100, 100))
