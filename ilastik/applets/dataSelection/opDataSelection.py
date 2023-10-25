@@ -948,8 +948,6 @@ class OpDataSelectionGroup(Operator):
 
 
 class OpMultiLaneDataSelectionGroup(OpMultiLaneWrapper):
-    # TODO: Provide output slots DatasetsByRole and ImagesByRole as a convenience
-    #       to save clients the trouble of instantiating/using OpTransposeSlots.
     def __init__(self, forceAxisOrder=False, *args, **kwargs):
         kwargs.update(
             {
