@@ -37,13 +37,13 @@ class OpResize(Operator):
     Presents scikit-image.transform.resize as a lazyflow operator,
     handling in particular the halo for antialiasing in the context of subregions.
 
-    Resizes input image to desired output size.
     Cannot resize along channel axis (would be nonsense).
     Time is treated like space axes, so resize along t at your own risk.
     """
 
     RawImage = InputSlot()
     TargetShape = InputSlot()  # Tuple[int, ...]
+    HaloFactor = InputSlot()
     ResizedImage = OutputSlot()
 
     def setupOutputs(self):
@@ -71,20 +71,23 @@ class OpResize(Operator):
         assert slot is self.ResizedImage, "Unknown output slot"
         downsampling_factors = self._get_scaling_factors()
         assert all(f >= 1 for f in downsampling_factors), "Upsampling not supported yet"
-        # @haesleinhuepf sigmas for antialiasing (cf BioImageAnalysisNotebooks downscaling and denoising).
-        # skimage.transform.resize does np.maximum(0, (downsampling_factors - 1) / 2) instead,
-        # but this seems to cause bigger artifacts at block boundaries.
-        antialiasing_sigmas = tuple(f / 4 for f in downsampling_factors)
+        # Compute sigmas like skimage.transform.resize. Still need to check if
+        # @haesleinhuepf method is better (cf BioImageAnalysisNotebooks downscaling and denoising).
+        # That would be `tuple(f / 4 for f in downsampling_factors)`.
+        # antialiasing_sigmas = np.array([f / 4 for f in downsampling_factors])
+        antialiasing_sigmas = np.maximum(0, (downsampling_factors - 1) / 2)
+        halo_sigmas = antialiasing_sigmas * self.HaloFactor.value
         axes_to_pad = downsampling_factors > 1
         raw_roi = self._reverse_roi_scaling(roi, downsampling_factors)
         raw_roi_with_halo, raw_result_roi = enlargeRoiForHalo(
             raw_roi[0],
             raw_roi[1],
             self.RawImage.meta.shape,
-            sigma=antialiasing_sigmas,
+            sigma=halo_sigmas,
             enlarge_axes=axes_to_pad,
             return_result_roi=True,
         )
+        halo = (raw_roi_with_halo - raw_roi)[1] - (raw_roi_with_halo - raw_roi)[0]
         raw_image_with_halo = self.RawImage[roiToSlice(*raw_roi_with_halo)].wait()
         scaled_roi_with_halo = self._scale_roi(raw_roi_with_halo, downsampling_factors)
         scaled_image = sk_transform.resize(
@@ -98,6 +101,10 @@ class OpResize(Operator):
         assert np.all(
             scaled_result_roi[1] - scaled_result_roi[0] == roi.stop - roi.start
         ), "Scaled image shape does not match requested shape"
+        # import tifffile
+        # tileid ="tile-start-" + '_'.join([str(s) for s in roi.start]) + "-stop-" + '_'.join([str(s) for s in roi.stop])
+        # tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{tileid}--raw.tif", raw_image_with_halo)
+        # tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{tileid}--scaled.tif", scaled_image)
         result[...] = scaled_image[roiToSlice(*scaled_result_roi)]
 
     def propagateDirty(self, slot, subindex, roi):
@@ -117,6 +124,10 @@ class OpResize(Operator):
 
     @staticmethod
     def _scale_roi(roi: Union[np.typing.NDArray, SubRegion], factors: Iterable[float]) -> np.typing.NDArray:
+        """
+        Returns roi as numpy.ndarray[start, stop] instead of SubRegion to be independent of slot.
+        np.round matches behavior of skimage.transform.resize when rounding resized image shape.
+        """
         start = roi.start if isinstance(roi, SubRegion) else roi[0]
         stop = roi.stop if isinstance(roi, SubRegion) else roi[1]
         scaled_shape = np.round(np.divide(stop - start, factors)).astype(int)
