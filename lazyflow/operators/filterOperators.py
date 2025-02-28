@@ -108,11 +108,10 @@ class OpBaseFilter(Operator):
         # Output meta starts with a copy of the input meta, which is then modified
         self.Output.meta.assignFrom(self.Input.meta)
 
-        inputSlot = self.Input
         numChannels = self.Input.meta.shape[1]
 
         self.Output.meta.dtype = self.output_dtype
-        self.Output.meta.axistags = copy.copy(inputSlot.meta.axistags)
+        self.Output.meta.axistags = copy.copy(self.Input.meta.axistags)
         self.Output.meta.shape = (
             self.Input.meta.shape[0],
             numChannels * self.resultingChannels(),
@@ -380,7 +379,7 @@ def coherenceOrientationOfStructureTensor(image, sigma0, sigma1, window_size, ou
     else:
         res = numpy.ndarray((image.shape[0], image.shape[1], 2))
 
-    res[:, :, 0] = numpy.sqrt((i22 - i11) ** 2 + 4 * (i12 ** 2)) / (i11 - i22)
+    res[:, :, 0] = numpy.sqrt((i22 - i11) ** 2 + 4 * (i12**2)) / (i11 - i22)
     res[:, :, 1] = (numpy.arctan(2 * i12 / (i22 - i11)) / numpy.pi) + 0.5
 
     return res

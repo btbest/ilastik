@@ -23,7 +23,7 @@ import logging
 from typing import Union, Iterable
 
 import numpy as np
-from skimage import transform as sk_transform
+from scipy import ndimage as scipy_ndimage
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import enlargeRoiForHalo, roiToSlice
@@ -89,23 +89,15 @@ class OpResize(Operator):
         )
         halo = (raw_roi_with_halo - raw_roi)[1] - (raw_roi_with_halo - raw_roi)[0]
         raw_image_with_halo = self.RawImage[roiToSlice(*raw_roi_with_halo)].wait()
-        scaled_roi_with_halo = self._scale_roi(raw_roi_with_halo, downsampling_factors)
-        scaled_image = sk_transform.resize(
-            raw_image_with_halo,
-            scaled_roi_with_halo[1] - scaled_roi_with_halo[0],
-            anti_aliasing=True,
-            anti_aliasing_sigma=antialiasing_sigmas,
-            preserve_range=True,
-        )
-        scaled_result_roi = self._scale_roi(raw_result_roi, downsampling_factors)
-        assert np.all(
-            scaled_result_roi[1] - scaled_result_roi[0] == roi.stop - roi.start
-        ), "Scaled image shape does not match requested shape"
+        filtered_with_halo = scipy_ndimage.gaussian_filter(raw_image_with_halo, antialiasing_sigmas)
+        filtered = filtered_with_halo[roiToSlice(*raw_result_roi)]
+        zoom_factors = [1 / f for f in downsampling_factors]
+        scaled_image = scipy_ndimage.zoom(filtered, zoom_factors, grid_mode=True)
         # import tifffile
         # tileid ="tile-start-" + '_'.join([str(s) for s in roi.start]) + "-stop-" + '_'.join([str(s) for s in roi.stop])
         # tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{tileid}--raw.tif", raw_image_with_halo)
         # tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{tileid}--scaled.tif", scaled_image)
-        result[...] = scaled_image[roiToSlice(*scaled_result_roi)]
+        result[...] = scaled_image
 
     def propagateDirty(self, slot, subindex, roi):
         # roi is on RawImage scale here (unscaled). Would technically need to scale it to ResizedImage scale,

@@ -56,10 +56,10 @@ def test_resize_handles_blocks(graph):
 
         sk_resized = sk_resize(data, scaling_target_shape, anti_aliasing=True, preserve_range=True)
         diff = op_resized - sk_resized
-        tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{filename}-1orig.tif", data)
-        tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{filename}-2skscaled.tif", sk_resized)
-        tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{filename}-3opscaled.tif", op_resized)
-        tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{filename}-4diff-{halo_factor}.tif", diff)
+        tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{filename}-scipy-1orig.tif", data)
+        tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{filename}-scipy-2skscaled.tif", sk_resized)
+        tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{filename}-scipy-3opscaled.tif", op_resized)
+        tifffile.imwrite(f"C:/Users/root/Code/ilastik-group/sample-data/{filename}-scipy-4diff-{halo_factor}.tif", diff)
         print(
             f"{halo_factor}: halo sigma, {round(0.78*halo_factor,5)}, halo, {numpy.ceil(3.5*0.78*halo_factor)}, mean diff, {round(diff.mean(), 2)}, diff range, {round(diff.min(), 2)}, {round(diff.max(),2)}"
         )
